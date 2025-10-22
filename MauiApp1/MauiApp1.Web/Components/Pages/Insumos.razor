@@ -1,0 +1,287 @@
+@page "/insumos"
+@using MauiApp1.Web.Models
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Insumos</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Gerenciamento de Insumos</h2>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="ShowCreateModal">
+                + Novo Insumo
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <input type="text" class="form-control" @bind="searchTerm" @onkeyup="OnSearchChanged" placeholder="Pesquisar insumos..." />
+        </div>
+        <div class="col-md-3">
+            <select class="form-control" @bind="pageSize" @bind:after="OnPageSizeChanged">
+                <option value="10">10 por página</option>
+                <option value="25">25 por página</option>
+                <option value="50">50 por página</option>
+                <option value="100">100 por página</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Descrição</th>
+                    <th>Preço</th>
+                    <th>Quantidade</th>
+                    <th>Unidade</th>
+                    <th>Ativo</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var insumo in insumos)
+                {
+                    <tr>
+                        <td>@insumo.Nome</td>
+                        <td>@insumo.Descricao</td>
+                        <td>@insumo.Preco.ToString("C2")</td>
+                        <td>@insumo.Quantidade</td>
+                        <td>@insumo.Unidade</td>
+                        <td>
+                            <span class="badge @(insumo.Ativo ? "bg-success" : "bg-secondary")">
+                                @(insumo.Ativo ? "Ativo" : "Inativo")
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => EditInsumo(insumo)">
+                                Editar
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteInsumo(insumo)">
+                                Excluir
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col">
+            <nav aria-label="Navegação de páginas">
+                <ul class="pagination">
+                    @for (int i = 1; i <= totalPages; i++)
+                    {
+                        <li class="page-item @(i == currentPage ? "active" : "")">
+                            <button class="page-link" @onclick="() => OnPageChanged(i)">@i</button>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+        <div class="col-auto">
+            <span>Total: @totalCount registros</span>
+        </div>
+    </div>
+</div>
+
+@if (showCreateModal)
+{
+    <div class="modal show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editingInsumo?.Id > 0 ? "Editar Insumo" : "Novo Insumo")</h5>
+                    <button type="button" class="btn-close" @onclick="CancelEdit"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="editingInsumo" OnValidSubmit="SaveInsumo">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">Nome</label>
+                            <input type="text" class="form-control" @bind="editingInsumo.Nome" id="nome" required />
+                            <ValidationMessage For="@(() => editingInsumo.Nome)" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" @bind="editingInsumo.Descricao" id="descricao"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="preco" class="form-label">Preço</label>
+                                    <input type="number" step="0.01" class="form-control" @bind="editingInsumo.Preco" id="preco" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="quantidade" class="form-label">Quantidade</label>
+                                    <input type="number" class="form-control" @bind="editingInsumo.Quantidade" id="quantidade" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="unidade" class="form-label">Unidade</label>
+                                    <input type="text" class="form-control" @bind="editingInsumo.Unidade" id="unidade" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" @bind="editingInsumo.Ativo" id="ativo" />
+                                        <label class="form-check-label" for="ativo">Ativo</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                        <button type="button" class="btn btn-secondary" @onclick="CancelEdit">Cancelar</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Insumo> insumos = new();
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+    private int totalCount;
+    private string searchTerm = string.Empty;
+    private bool showCreateModal = false;
+    private Insumo editingInsumo = new();
+    private Timer? searchTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInsumos();
+    }
+
+    private async Task LoadInsumos()
+    {
+        try
+        {
+            var filter = new FilterRequest
+            {
+                PageNumber = currentPage,
+                PageSize = pageSize,
+                SearchTerm = searchTerm
+            };
+
+            var response = await Http.GetFromJsonAsync<PagedResult<Insumo>>($"api/insumos/paged?{filter.ToQueryString()}");
+            if (response != null)
+            {
+                insumos = response.Items;
+                totalPages = response.TotalPages;
+                totalCount = response.TotalCount;
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"Erro ao carregar insumos: {ex.Message}");
+        }
+    }
+
+    private async Task OnSearchChanged()
+    {
+        searchTimer?.Dispose();
+        searchTimer = new Timer(async _ =>
+        {
+            currentPage = 1;
+            await LoadInsumos();
+            await InvokeAsync(StateHasChanged);
+        }, null, 500, Timeout.Infinite);
+    }
+
+    private async Task OnPageSizeChanged()
+    {
+        currentPage = 1;
+        await LoadInsumos();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        currentPage = page;
+        await LoadInsumos();
+    }
+
+    private void ShowCreateModal()
+    {
+        editingInsumo = new Insumo { Ativo = true };
+        showCreateModal = true;
+    }
+
+    private void EditInsumo(Insumo insumo)
+    {
+        editingInsumo = new Insumo
+        {
+            Id = insumo.Id,
+            Nome = insumo.Nome,
+            Descricao = insumo.Descricao,
+            Preco = insumo.Preco,
+            Quantidade = insumo.Quantidade,
+            Unidade = insumo.Unidade,
+            Ativo = insumo.Ativo
+        };
+        showCreateModal = true;
+    }
+
+    private async Task SaveInsumo()
+    {
+        try
+        {
+            if (editingInsumo.Id > 0)
+            {
+                await Http.PutAsJsonAsync($"api/insumos/{editingInsumo.Id}", editingInsumo);
+            }
+            else
+            {
+                await Http.PostAsJsonAsync("api/insumos", editingInsumo);
+            }
+
+            showCreateModal = false;
+            await LoadInsumos();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"Erro ao salvar insumo: {ex.Message}");
+        }
+    }
+
+    private void CancelEdit()
+    {
+        showCreateModal = false;
+        editingInsumo = new();
+    }
+
+    private async Task DeleteInsumo(Insumo insumo)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", $"Tem certeza que deseja excluir o insumo '{insumo.Nome}'?"))
+        {
+            try
+            {
+                await Http.DeleteAsync($"api/insumos/{insumo.Id}");
+                await LoadInsumos();
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("console.error", $"Erro ao excluir insumo: {ex.Message}");
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        searchTimer?.Dispose();
+    }
+}

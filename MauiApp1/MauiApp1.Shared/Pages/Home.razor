@@ -1,7 +1,40 @@
-﻿@page "/"
+@page "/"
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="row">
+    <div class="col-12">
+        <h1>Bem-vindo ao Sistema de Gestão</h1>
+        <p class="lead">Gerencie seus insumos e serviços de forma eficiente.</p>
+    </div>
+</div>
 
-Welcome to your new app.
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Insumos</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Gerencie seu estoque de insumos, materiais e produtos.</p>
+                <a href="/insumos" class="btn btn-primary">
+                    📦 Acessar Insumos
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Serviços</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Gerencie seus serviços e prestações oferecidas.</p>
+                <a href="/servicos" class="btn btn-primary">
+                    🔧 Acessar Serviços
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

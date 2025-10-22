@@ -1,6 +1,18 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-@Body
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">Sistema de Gestão</a>
+        <div class="navbar-nav">
+            <a class="nav-link" href="/insumos">📦 Insumos</a>
+            <a class="nav-link" href="/servicos">🔧 Serviços</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid mt-3">
+    @Body
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

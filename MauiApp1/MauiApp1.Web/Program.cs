@@ -1,10 +1,26 @@
 using MauiApp1.Web.Components;
+using MauiApp1.Web.Data;
+using MauiApp1.Web.Services;
+using Microsoft.Fast.Components.FluentUI;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Add FluentUI
+builder.Services.AddFluentUIComponents();
+
+// Add database connection
+builder.Services.AddSingleton<DatabaseConnection>();
+
+// Add services
+builder.Services.AddScoped<IInsumoService, InsumoService>();
+builder.Services.AddScoped<IServicoService, ServicoService>();
+
+// Add controllers
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
@@ -24,5 +40,8 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddAdditionalAssemblies(typeof(MauiApp1.Shared._Imports).Assembly);
+
+// Map controllers
+app.MapControllers();
 
 app.Run();
