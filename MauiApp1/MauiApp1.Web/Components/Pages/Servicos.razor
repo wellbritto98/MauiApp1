@@ -1,0 +1,287 @@
+@page "/servicos"
+@using MauiApp1.Web.Models
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Serviços</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Gerenciamento de Serviços</h2>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="ShowCreateModal">
+                + Novo Serviço
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <input type="text" class="form-control" @bind="searchTerm" @onkeyup="OnSearchChanged" placeholder="Pesquisar serviços..." />
+        </div>
+        <div class="col-md-3">
+            <select class="form-control" @bind="pageSize" @bind:after="OnPageSizeChanged">
+                <option value="10">10 por página</option>
+                <option value="25">25 por página</option>
+                <option value="50">50 por página</option>
+                <option value="100">100 por página</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Descrição</th>
+                    <th>Preço</th>
+                    <th>Duração (min)</th>
+                    <th>Categoria</th>
+                    <th>Ativo</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var servico in servicos)
+                {
+                    <tr>
+                        <td>@servico.Nome</td>
+                        <td>@servico.Descricao</td>
+                        <td>@servico.Preco.ToString("C2")</td>
+                        <td>@servico.DuracaoMinutos</td>
+                        <td>@servico.Categoria</td>
+                        <td>
+                            <span class="badge @(servico.Ativo ? "bg-success" : "bg-secondary")">
+                                @(servico.Ativo ? "Ativo" : "Inativo")
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => EditServico(servico)">
+                                Editar
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteServico(servico)">
+                                Excluir
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col">
+            <nav aria-label="Navegação de páginas">
+                <ul class="pagination">
+                    @for (int i = 1; i <= totalPages; i++)
+                    {
+                        <li class="page-item @(i == currentPage ? "active" : "")">
+                            <button class="page-link" @onclick="() => OnPageChanged(i)">@i</button>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+        <div class="col-auto">
+            <span>Total: @totalCount registros</span>
+        </div>
+    </div>
+</div>
+
+@if (showCreateModal)
+{
+    <div class="modal show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editingServico?.Id > 0 ? "Editar Serviço" : "Novo Serviço")</h5>
+                    <button type="button" class="btn-close" @onclick="CancelEdit"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="editingServico" OnValidSubmit="SaveServico">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">Nome</label>
+                            <input type="text" class="form-control" @bind="editingServico.Nome" id="nome" required />
+                            <ValidationMessage For="@(() => editingServico.Nome)" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" @bind="editingServico.Descricao" id="descricao"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="preco" class="form-label">Preço</label>
+                                    <input type="number" step="0.01" class="form-control" @bind="editingServico.Preco" id="preco" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="duracao" class="form-label">Duração (minutos)</label>
+                                    <input type="number" class="form-control" @bind="editingServico.DuracaoMinutos" id="duracao" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="categoria" class="form-label">Categoria</label>
+                                    <input type="text" class="form-control" @bind="editingServico.Categoria" id="categoria" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" @bind="editingServico.Ativo" id="ativo" />
+                                        <label class="form-check-label" for="ativo">Ativo</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                        <button type="button" class="btn btn-secondary" @onclick="CancelEdit">Cancelar</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Servico> servicos = new();
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+    private int totalCount;
+    private string searchTerm = string.Empty;
+    private bool showCreateModal = false;
+    private Servico editingServico = new();
+    private Timer? searchTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadServicos();
+    }
+
+    private async Task LoadServicos()
+    {
+        try
+        {
+            var filter = new FilterRequest
+            {
+                PageNumber = currentPage,
+                PageSize = pageSize,
+                SearchTerm = searchTerm
+            };
+
+            var response = await Http.GetFromJsonAsync<PagedResult<Servico>>($"api/servicos/paged?{filter.ToQueryString()}");
+            if (response != null)
+            {
+                servicos = response.Items;
+                totalPages = response.TotalPages;
+                totalCount = response.TotalCount;
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"Erro ao carregar serviços: {ex.Message}");
+        }
+    }
+
+    private async Task OnSearchChanged()
+    {
+        searchTimer?.Dispose();
+        searchTimer = new Timer(async _ =>
+        {
+            currentPage = 1;
+            await LoadServicos();
+            await InvokeAsync(StateHasChanged);
+        }, null, 500, Timeout.Infinite);
+    }
+
+    private async Task OnPageSizeChanged()
+    {
+        currentPage = 1;
+        await LoadServicos();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        currentPage = page;
+        await LoadServicos();
+    }
+
+    private void ShowCreateModal()
+    {
+        editingServico = new Servico { Ativo = true };
+        showCreateModal = true;
+    }
+
+    private void EditServico(Servico servico)
+    {
+        editingServico = new Servico
+        {
+            Id = servico.Id,
+            Nome = servico.Nome,
+            Descricao = servico.Descricao,
+            Preco = servico.Preco,
+            DuracaoMinutos = servico.DuracaoMinutos,
+            Categoria = servico.Categoria,
+            Ativo = servico.Ativo
+        };
+        showCreateModal = true;
+    }
+
+    private async Task SaveServico()
+    {
+        try
+        {
+            if (editingServico.Id > 0)
+            {
+                await Http.PutAsJsonAsync($"api/servicos/{editingServico.Id}", editingServico);
+            }
+            else
+            {
+                await Http.PostAsJsonAsync("api/servicos", editingServico);
+            }
+
+            showCreateModal = false;
+            await LoadServicos();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"Erro ao salvar serviço: {ex.Message}");
+        }
+    }
+
+    private void CancelEdit()
+    {
+        showCreateModal = false;
+        editingServico = new();
+    }
+
+    private async Task DeleteServico(Servico servico)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", $"Tem certeza que deseja excluir o serviço '{servico.Nome}'?"))
+        {
+            try
+            {
+                await Http.DeleteAsync($"api/servicos/{servico.Id}");
+                await LoadServicos();
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("console.error", $"Erro ao excluir serviço: {ex.Message}");
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        searchTimer?.Dispose();
+    }
+}
