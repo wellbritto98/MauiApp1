@@ -29,12 +29,12 @@ public class ServicosController : ControllerBase
         }
     }
 
-    [HttpGet("{id}")]
-    public async Task<ActionResult<Servico>> GetById(int id)
+    [HttpGet("{fontSgFonte}/{servNrCodigo}")]
+    public async Task<ActionResult<Servico>> GetById(string fontSgFonte, int servNrCodigo)
     {
         try
         {
-            var servico = await _servicoService.GetByIdAsync(id);
+            var servico = await _servicoService.GetByIdAsync(fontSgFonte, servNrCodigo);
             if (servico == null)
                 return NotFound();
 
@@ -51,9 +51,10 @@ public class ServicosController : ControllerBase
     {
         try
         {
-            servico.DataCriacao = DateTime.UtcNow;
+            servico.ServDtCadastro = DateTime.UtcNow;
+            servico.ServDtUltRevisao = DateTime.UtcNow;
             var createdServico = await _servicoService.CreateAsync(servico);
-            return CreatedAtAction(nameof(GetById), new { id = createdServico.Id }, createdServico);
+            return CreatedAtAction(nameof(GetById), new { fontSgFonte = createdServico.FontSgFonte, servNrCodigo = createdServico.ServNrCodigo }, createdServico);
         }
         catch (Exception ex)
         {
@@ -61,15 +62,15 @@ public class ServicosController : ControllerBase
         }
     }
 
-    [HttpPut("{id}")]
-    public async Task<ActionResult<Servico>> Update(int id, [FromBody] Servico servico)
+    [HttpPut("{fontSgFonte}/{servNrCodigo}")]
+    public async Task<ActionResult<Servico>> Update(string fontSgFonte, int servNrCodigo, [FromBody] Servico servico)
     {
         try
         {
-            if (id != servico.Id)
-                return BadRequest("ID mismatch");
+            if (fontSgFonte != servico.FontSgFonte || servNrCodigo != servico.ServNrCodigo)
+                return BadRequest("Parâmetros de identificação não coincidem");
 
-            servico.DataAtualizacao = DateTime.UtcNow;
+            servico.ServDtUltRevisao = DateTime.UtcNow;
             var updatedServico = await _servicoService.UpdateAsync(servico);
             return Ok(updatedServico);
         }
@@ -79,16 +80,44 @@ public class ServicosController : ControllerBase
         }
     }
 
-    [HttpDelete("{id}")]
-    public async Task<ActionResult> Delete(int id)
+    [HttpDelete("{fontSgFonte}/{servNrCodigo}")]
+    public async Task<ActionResult> Delete(string fontSgFonte, int servNrCodigo)
     {
         try
         {
-            var deleted = await _servicoService.DeleteAsync(id);
+            var deleted = await _servicoService.DeleteAsync(fontSgFonte, servNrCodigo);
             if (!deleted)
                 return NotFound();
 
             return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Erro interno: {ex.Message}");
+        }
+    }
+
+    [HttpGet("fontes")]
+    public async Task<ActionResult<IEnumerable<Fonte>>> GetFontes()
+    {
+        try
+        {
+            var fontes = await _servicoService.GetFontesAsync();
+            return Ok(fontes);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Erro interno: {ex.Message}");
+        }
+    }
+
+    [HttpGet("grupos")]
+    public async Task<ActionResult<IEnumerable<GrupoServico>>> GetGrupos()
+    {
+        try
+        {
+            var grupos = await _servicoService.GetGruposServicoAsync();
+            return Ok(grupos);
         }
         catch (Exception ex)
         {

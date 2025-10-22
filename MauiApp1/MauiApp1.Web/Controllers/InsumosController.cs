@@ -29,12 +29,12 @@ public class InsumosController : ControllerBase
         }
     }
 
-    [HttpGet("{id}")]
-    public async Task<ActionResult<Insumo>> GetById(int id)
+    [HttpGet("{fontSgFonte}/{insuNrCodigo}")]
+    public async Task<ActionResult<Insumo>> GetById(string fontSgFonte, int insuNrCodigo)
     {
         try
         {
-            var insumo = await _insumoService.GetByIdAsync(id);
+            var insumo = await _insumoService.GetByIdAsync(fontSgFonte, insuNrCodigo);
             if (insumo == null)
                 return NotFound();
 
@@ -51,9 +51,10 @@ public class InsumosController : ControllerBase
     {
         try
         {
-            insumo.DataCriacao = DateTime.UtcNow;
+            insumo.InsuDtCadastro = DateTime.UtcNow;
+            insumo.InsuDtUltRevisao = DateTime.UtcNow;
             var createdInsumo = await _insumoService.CreateAsync(insumo);
-            return CreatedAtAction(nameof(GetById), new { id = createdInsumo.Id }, createdInsumo);
+            return CreatedAtAction(nameof(GetById), new { fontSgFonte = createdInsumo.FontSgFonte, insuNrCodigo = createdInsumo.InsuNrCodigo }, createdInsumo);
         }
         catch (Exception ex)
         {
@@ -61,15 +62,15 @@ public class InsumosController : ControllerBase
         }
     }
 
-    [HttpPut("{id}")]
-    public async Task<ActionResult<Insumo>> Update(int id, [FromBody] Insumo insumo)
+    [HttpPut("{fontSgFonte}/{insuNrCodigo}")]
+    public async Task<ActionResult<Insumo>> Update(string fontSgFonte, int insuNrCodigo, [FromBody] Insumo insumo)
     {
         try
         {
-            if (id != insumo.Id)
-                return BadRequest("ID mismatch");
+            if (fontSgFonte != insumo.FontSgFonte || insuNrCodigo != insumo.InsuNrCodigo)
+                return BadRequest("Parâmetros de identificação não coincidem");
 
-            insumo.DataAtualizacao = DateTime.UtcNow;
+            insumo.InsuDtUltRevisao = DateTime.UtcNow;
             var updatedInsumo = await _insumoService.UpdateAsync(insumo);
             return Ok(updatedInsumo);
         }
@@ -79,16 +80,44 @@ public class InsumosController : ControllerBase
         }
     }
 
-    [HttpDelete("{id}")]
-    public async Task<ActionResult> Delete(int id)
+    [HttpDelete("{fontSgFonte}/{insuNrCodigo}")]
+    public async Task<ActionResult> Delete(string fontSgFonte, int insuNrCodigo)
     {
         try
         {
-            var deleted = await _insumoService.DeleteAsync(id);
+            var deleted = await _insumoService.DeleteAsync(fontSgFonte, insuNrCodigo);
             if (!deleted)
                 return NotFound();
 
             return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Erro interno: {ex.Message}");
+        }
+    }
+
+    [HttpGet("fontes")]
+    public async Task<ActionResult<IEnumerable<Fonte>>> GetFontes()
+    {
+        try
+        {
+            var fontes = await _insumoService.GetFontesAsync();
+            return Ok(fontes);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Erro interno: {ex.Message}");
+        }
+    }
+
+    [HttpGet("grupos")]
+    public async Task<ActionResult<IEnumerable<GrupoInsumo>>> GetGrupos()
+    {
+        try
+        {
+            var grupos = await _insumoService.GetGruposInsumoAsync();
+            return Ok(grupos);
         }
         catch (Exception ex)
         {
